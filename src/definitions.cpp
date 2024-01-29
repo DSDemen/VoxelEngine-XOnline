@@ -45,4 +45,5 @@ void setup_bindings() {
 	Events::bind(BIND_PLAYER_BUILD, inputtype::mouse, mousecode::BUTTON_2);
 	Events::bind(BIND_PLAYER_PICK, inputtype::mouse, mousecode::BUTTON_3);
 	Events::bind(BIND_HUD_INVENTORY, inputtype::keyboard, keycode::TAB);
+    Events::bind(BIND_HUD_CHAT, inputtype::keyboard, keycode::T);
 }

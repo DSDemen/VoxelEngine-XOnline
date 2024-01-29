@@ -250,6 +250,31 @@ std::shared_ptr<InventoryView> HudRenderer::createInventory() {
     return view;
 }
 
+std::shared_ptr<InventoryView> HudRenderer::createChat() {
+    auto level = frontend->getLevel();
+    auto player = level->player;
+    auto inventory = player->getInventory();
+    auto content = level->content;
+
+    SlotLayout slotLayout(glm::vec2(), true, false, [=](ItemStack& stack) {
+        stack.clear();
+    }, nullptr);
+
+    InventoryBuilder builder;
+    builder.addGrid(10, inventory->size(), glm::vec2(), 4, true, slotLayout);
+    auto layout = builder.build();
+
+    auto view = std::make_shared<InventoryView>(
+            content,
+            frontend,
+            interaction.get(),
+            inventory,
+            std::move(layout)
+    );
+    view->build();
+    return view;
+}
+
 HudRenderer::HudRenderer(Engine* engine, LevelFrontend* frontend) 
     : assets(engine->getAssets()), 
       gui(engine->getGUI()),
@@ -278,6 +303,7 @@ HudRenderer::HudRenderer(Engine* engine, LevelFrontend* frontend)
 
     hotbarView = createHotbar();
     inventoryView = createInventory();
+    chatView = createChat();
 
     darkOverlay = std::make_unique<Panel>(glm::vec2(4000.0f));
     darkOverlay->color(glm::vec4(0, 0, 0, 0.5f));
@@ -333,6 +359,9 @@ void HudRenderer::update(bool visible) {
             menu->reset();
         } else if (inventoryOpen) {
             closeInventory();
+        } else if (chatOpen) {
+            closeChat();
+
         } else {
             pause = true;
             menu->set("pause");
@@ -356,6 +385,20 @@ void HudRenderer::update(bool visible) {
     contentAccessPanel->visible(inventoryOpen);
     contentAccessPanel->size(glm::vec2(invSize.x, Window::height));
     hotbarView->visible(visible);
+
+    if (visible && Events::jactive(BIND_HUD_CHAT)) {
+        if (!pause) {
+            if (chatOpen) {
+                closeChat();
+            } else {
+                chatOpen = true;
+            }
+        }
+    }
+    if ((pause || chatOpen) == Events::_cursor_locked) {
+        Events::toggleCursor();
+    }
+
 
     for (int i = keycode::NUM_1; i <= keycode::NUM_9; i++) {
         if (Events::jpressed(i)) {
@@ -381,6 +424,10 @@ void HudRenderer::closeInventory() {
     inventoryOpen = false;
     ItemStack& grabbed = interaction->getGrabbedItem();
     grabbed.clear();
+}
+
+void HudRenderer::closeChat() {
+    chatOpen = false;
 }
 
 void HudRenderer::draw(const GfxContext& ctx){
@@ -431,11 +478,32 @@ void HudRenderer::draw(const GfxContext& ctx){
     }
     grabbedItemView->setCoord(glm::vec2(Events::cursor));
     batch->render();
+
+    if (chatOpen) {
+        auto caLayout = contentAccess->getLayout();
+        auto invLayout = inventoryView->getLayout();
+        float caWidth = caLayout->getSize().x;
+        glm::vec2 invSize = invLayout->getSize();
+
+        float width = viewport.getWidth();
+
+        inventoryView->setCoord(glm::vec2(
+                glm::min(width/2-invSize.x/2, width-caWidth-10-invSize.x),
+                height/2-invSize.y/2
+        ));
+        contentAccessPanel->setCoord(glm::vec2(width-caWidth, 0));
+    }
+
 }
 
 bool HudRenderer::isInventoryOpen() const {
     return inventoryOpen;
 }
+
+bool HudRenderer::isChatOpen() const {
+    return chatOpen;
+}
+
 
 bool HudRenderer::isPause() const {
     return pause;

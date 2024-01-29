@@ -23,5 +23,6 @@ const std::string BIND_PLAYER_ATTACK = "player.attack";
 const std::string BIND_PLAYER_BUILD = "player.build";
 const std::string BIND_PLAYER_PICK = "player.pick";
 const std::string BIND_HUD_INVENTORY = "hud.inventory";
+const std::string BIND_HUD_CHAT = "hud.chat";
 
 #endif // SRC_CORE_DEFS_H_

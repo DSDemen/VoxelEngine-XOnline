@@ -35,12 +35,14 @@ class HudRenderer {
 	int fpsMax = 60;
 	std::wstring fpsString;
 	bool inventoryOpen = false;
+    bool chatOpen = false;
 	bool pause = false;
 
     std::shared_ptr<gui::Panel> contentAccessPanel;
     std::shared_ptr<InventoryView> contentAccess;
     std::shared_ptr<InventoryView> hotbarView;
     std::shared_ptr<InventoryView> inventoryView;
+    std::shared_ptr<InventoryView> chatView;
 	std::shared_ptr<gui::UINode> debugPanel;
     std::shared_ptr<gui::Panel> darkOverlay;
     std::unique_ptr<InventoryInteraction> interaction;
@@ -53,6 +55,7 @@ class HudRenderer {
     std::shared_ptr<InventoryView> createContentAccess();
     std::shared_ptr<InventoryView> createHotbar();
     std::shared_ptr<InventoryView> createInventory();
+    std::shared_ptr<InventoryView> createChat();
 public:
 	HudRenderer(Engine* engine, LevelFrontend* frontend);
 	~HudRenderer();
@@ -62,9 +65,11 @@ public:
 	void drawDebug(int fps);
 
 	bool isInventoryOpen() const;
+    bool isChatOpen() const;
 	bool isPause() const;
 
     void closeInventory();
+    void closeChat();
 };
 
 #endif /* SRC_HUD_H_ */
