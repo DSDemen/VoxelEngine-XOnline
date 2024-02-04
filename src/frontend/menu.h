@@ -1,6 +1,7 @@
 #ifndef FRONTEND_MENU_H_
 #define FRONTEND_MENU_H_
 
+extern int bport;
 class Engine;
 
 namespace gui {

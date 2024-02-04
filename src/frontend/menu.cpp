@@ -28,6 +28,7 @@
 #include "../content/ContentLUT.h"
 #include "../content/ContentPack.h"
 #include "../net/NetSession.h"
+#include "../frontend/hud.h"
 
 #include "gui/gui_util.h"
 #include "locale/langs.h"
@@ -37,6 +38,7 @@ using glm::vec4;
 
 namespace fs = std::filesystem;
 using namespace gui;
+int bport = 6969;
 
 inline uint64_t randU64() {
     srand(time(NULL));
@@ -149,7 +151,7 @@ void create_languages_panel(Engine* engine, PagesControl* menu) {
     panel->add(guiutil::backButton(menu));
 }
 
-void open_world(std::string name, Engine* engine, NetMode stp) {
+void open_world(std::string name, Engine* engine, NetMode stp, int portp) {
     auto paths = engine->getPaths();
     auto folder = paths->getWorldsFolder()/fs::u8path(name);
     try {
@@ -192,12 +194,14 @@ void open_world(std::string name, Engine* engine, NetMode stp) {
         
         if(stp == NetMode::STAND_ALONE)
         {
+            isInOnline = 0;
             engine->setScreen(std::make_shared<LevelScreen>(engine, level));
         }
         else
         {
-            if(NetSession::StartSession(engine, NET_PORT))
+            if(NetSession::StartSession(engine, portp))
             {
+                isInOnline = 1;
                 engine->setScreen(std::make_shared<LevelScreen>(engine, level));
             }
             else
@@ -208,7 +212,7 @@ void open_world(std::string name, Engine* engine, NetMode stp) {
     }
 }
 
-Panel* create_server_worlds_panel(Engine* engine) {
+Panel* create_server_worlds_panel(Engine* engine, int port) {
     auto panel = new Panel(vec2(390, 200), vec4(5.0f));
     panel->color(vec4(1.0f, 1.0f, 1.0f, 0.07f));
     panel->maxLength(400);
@@ -234,8 +238,29 @@ Panel* create_server_worlds_panel(Engine* engine) {
             btn->color(vec4(1.0f, 1.0f, 1.0f, 0.1f));
             btn->setHoverColor(vec4(1.0f, 1.0f, 1.0f, 0.17f));
             btn->listenAction([=](GUI*) {
-                open_world(name, engine, NetMode::PLAY_SERVER);
+                open_world(name, engine, NetMode::PLAY_SERVER, port);
             });
+
+            auto image = std::make_shared<Image>("gui/delete_icon", vec2(32, 32));
+            image->color(vec4(1, 1, 1, 0.5f));
+
+            auto delbtn = std::make_shared<Button>(image, vec4(2));
+            delbtn->color(vec4(0.0f));
+            delbtn->setHoverColor(vec4(1.0f, 1.0f, 1.0f, 0.17f));
+
+            btn->add(delbtn, vec2(330, 3));
+
+            delbtn->listenAction([=](GUI* gui) {
+                guiutil::confirm(gui, langs::get(L"delete-confirm", L"world")+
+                                      L" ("+util::str2wstr_utf8(folder.u8string())+L")", [=]()
+                                 {
+                                     std::cout << "deleting " << folder.u8string() << std::endl;
+                                     fs::remove_all(folder);
+                                     menus::refresh_menus(engine, gui->getMenu());
+                                 });
+            });
+
+
             panel->add(btn);
         }
     }
@@ -246,6 +271,7 @@ Panel* create_worlds_panel(Engine* engine) {
     auto panel = new Panel(vec2(390, 200), vec4(5.0f));
     panel->color(vec4(1.0f, 1.0f, 1.0f, 0.07f));
     panel->maxLength(400);
+    int port34 = 6969;
 
     auto paths = engine->getPaths();
 
@@ -261,7 +287,7 @@ Panel* create_worlds_panel(Engine* engine) {
         label->setInteractive(false);
         btn->add(label, vec2(8, 8));
         btn->listenAction([=](GUI*) {
-            open_world(name, engine, NetMode::STAND_ALONE);
+            open_world(name, engine, NetMode::STAND_ALONE, port34);
         });
 
         auto image = std::make_shared<Image>("gui/delete_icon", vec2(32, 32));
@@ -395,11 +421,12 @@ void create_content_panel(Engine* engine, PagesControl* menu) {
             }
             
             world->wfile->addPack(pack.id);
+            int port35 = 6969;
 
             std::string wname = world->getName();
             engine->setScreen(nullptr);
             engine->setScreen(std::make_shared<MenuScreen>(engine));
-            open_world(wname, engine, NetMode::STAND_ALONE);
+            open_world(wname, engine, NetMode::STAND_ALONE, port35);
         });
         menu->add("content-packs", panel);
         menu->set("content-packs");
@@ -439,18 +466,28 @@ void create_multiplayer_panel(Engine* engine, PagesControl* menu) {
         addrInput = new TextBox(L"127.0.0.1", vec4(6.0f));
         panel->add(addrInput);
     }
+
+    TextBox* portInput; {
+        panel->add(std::make_shared<Label>(langs::get(L"Port:", L"porttextbox")));
+        portInput = new TextBox(L"6969", vec4(6.0f));
+        panel->add(portInput);
+    }
+
     panel->add(label, vec2(78, 6));
     panel->add((new Button(langs::get(L"Connect To Server", L"conbutton"), vec4(10.f)))
     ->listenAction([=](GUI* gui) {
+        std::cout << "Connection Port:" << bport << std::endl;
         std::wstring addr = addrInput->text();
         std::string addr8 = util::wstr2str_utf8(addr);
+        std::wstring port = portInput->text();
+        long bport = std::wcstol(port.c_str(), nullptr, 10);
 
         engine->loadAllPacks();
         engine->loadContent();
         
-        if(NetSession::ConnectToSession(addr8.c_str(), NET_PORT, engine, true, true))
+        if(NetSession::ConnectToSession(addr8.c_str(), bport, engine, true, true))
         {
-
+            isInOnline = 1;
             auto folder = engine->getPaths()->getWorldsFolder()/fs::u8path(NetSession::GetConnectionData()->name + "_net");
             fs::create_directories(folder);
 
@@ -473,7 +510,17 @@ void create_multiplayer_panel(Engine* engine, PagesControl* menu) {
 
 void create_sworlds_panel(Engine* engine, PagesControl* menu) {
     auto panel = create_page(engine, "sworlds", 400, 0.0f, 1);
-    panel->add(create_server_worlds_panel(engine));
+
+    TextBox* port2Input; {
+        panel->add(std::make_shared<Label>(langs::get(L"Port:", L"porttextbox")));
+        port2Input = new TextBox(L"6969", vec4(6.0f));
+        panel->add(port2Input);
+    }
+
+    std::wstring port2 = port2Input->text();
+    long bbport = std::wcstol(port2.c_str(), nullptr, 10);
+
+    panel->add(create_server_worlds_panel(engine, bbport));
     panel->add(guiutil::backButton(menu));
 
 
@@ -525,9 +572,91 @@ void create_odoc2_panel(Engine* engine, PagesControl* menu) {
 
     panel->add(air, vec2(78, 6));
     panel->add(guiutil::gotoButton(L"Mainmenu", "main", menu));
+    panel->add(guiutil::gotoButton(L"Supporters", "sup", menu));
     panel->add(guiutil::backButton(menu));
 }
 
+void create_sup2_panel(Engine* engine, PagesControl* menu) {
+    auto panel = create_page(engine, "sup2", 400, 0.0f, 1);
+    auto air= std::make_shared<Label>("");
+
+    auto t1= std::make_shared<Label>("Supporters Page 2:");
+    panel->add(t1, vec2(78, 6));
+    panel->add(air, vec2(78, 6));
+    panel->add(air, vec2(78, 6));
+    auto t2= std::make_shared<Label>("БарБарик");
+    panel->add(t2, vec2(78, 6));
+    panel->add(air, vec2(78, 6));
+    auto t3= std::make_shared<Label>("Andryha");
+    panel->add(t3, vec2(78, 6));
+    panel->add(air, vec2(78, 6));
+    auto t4= std::make_shared<Label>("Mad4Me");
+    panel->add(t4, vec2(78, 6));
+    panel->add(air, vec2(78, 6));
+    auto t5= std::make_shared<Label>("Транзистор");
+    panel->add(t5, vec2(78, 6));
+
+    panel->add(air, vec2(78, 6));
+    panel->add(guiutil::backButton(menu));
+}
+
+void create_sup_panel(Engine* engine, PagesControl* menu) {
+    auto panel = create_page(engine, "sup", 400, 0.0f, 1);
+    auto air= std::make_shared<Label>("");
+
+    auto t1= std::make_shared<Label>("Supporters:");
+    panel->add(t1, vec2(78, 6));
+    panel->add(air, vec2(78, 6));
+    panel->add(air, vec2(78, 6));
+    auto t2= std::make_shared<Label>("mamker.");
+    panel->add(t2, vec2(78, 6));
+    panel->add(air, vec2(78, 6));
+    auto t3= std::make_shared<Label>("Wdouble");
+    panel->add(t3, vec2(78, 6));
+    panel->add(air, vec2(78, 6));
+    auto t4= std::make_shared<Label>("geradenis");
+    panel->add(t4, vec2(78, 6));
+    panel->add(air, vec2(78, 6));
+    auto t5= std::make_shared<Label>("kuzumi_enter");
+    panel->add(t5, vec2(78, 6));
+    panel->add(air, vec2(78, 6));
+    auto t6= std::make_shared<Label>("#!/bin/zёbra");
+    panel->add(t6, vec2(78, 6));
+    panel->add(air, vec2(78, 6));
+    auto t7= std::make_shared<Label>("rain");
+    panel->add(t7, vec2(78, 6));
+    panel->add(air, vec2(78, 6));
+    auto t8= std::make_shared<Label>("Ха");
+    panel->add(t8, vec2(78, 6));
+    panel->add(air, vec2(78, 6));
+    auto t9= std::make_shared<Label>("R0STUS");
+    panel->add(t9, vec2(78, 6));
+    panel->add(air, vec2(78, 6));
+    auto t10= std::make_shared<Label>("Megashield");
+    panel->add(t10, vec2(78, 6));
+    panel->add(air, vec2(78, 6));
+    auto t11= std::make_shared<Label>("Devart Omega");
+    panel->add(t11, vec2(78, 6));
+    panel->add(air, vec2(78, 6));
+    auto t12= std::make_shared<Label>("rwer");
+    panel->add(t12, vec2(78, 6));
+    panel->add(air, vec2(78, 6));
+    auto t13= std::make_shared<Label>("xireel");
+    panel->add(t13, vec2(78, 6));
+    panel->add(air, vec2(78, 6));
+    auto t14= std::make_shared<Label>("Yotex48");
+    panel->add(t14, vec2(78, 6));
+    panel->add(air, vec2(78, 6));
+    auto t15= std::make_shared<Label>("Mist4");
+    panel->add(t15, vec2(78, 6));
+    panel->add(air, vec2(78, 6));
+    auto t16= std::make_shared<Label>("K1pper");
+    panel->add(t16, vec2(78, 6));
+
+    panel->add(air, vec2(78, 6));
+    panel->add(guiutil::gotoButton(L"Next Page", "sup2", menu));
+    panel->add(guiutil::backButton(menu));
+}
 
 void create_new_world_panel(Engine* engine, PagesControl* menu) {
     auto panel = create_page(engine, "new-world", 400, 0.0f, 1);
@@ -750,6 +879,22 @@ void create_pause_panel(Engine* engine, PagesControl* menu) {
     }));
 }
 
+void create_serpause_panel(Engine* engine, PagesControl* menu) {
+    auto panel = create_page(engine, "serpause", 400, 0.0f, 1);
+
+    panel->add(create_button(L"Continue", vec4(10.0f), vec4(1), [=](GUI*){
+        menu->reset();
+    }));
+    panel->add(guiutil::gotoButton(L"Settings", "settings", menu));
+
+    panel->add(create_button(L"Disconnect", vec4(10.f), vec4(1), [=](GUI*){
+        // save world and destroy LevelScreen
+        engine->setScreen(nullptr);
+        // create and go to menu screen
+        engine->setScreen(std::make_shared<MenuScreen>(engine));
+    }));
+}
+
 void menus::create_menus(Engine* engine, PagesControl* menu) {
     create_new_world_panel(engine, menu);
     create_settings_panel(engine, menu);
@@ -761,6 +906,9 @@ void menus::create_menus(Engine* engine, PagesControl* menu) {
     create_sworlds_panel(engine, menu);
     create_odoc_panel(engine, menu);
     create_odoc2_panel(engine, menu);
+    create_sup_panel(engine, menu);
+    create_serpause_panel(engine, menu);
+    create_sup2_panel(engine, menu);
 }
 
 void menus::refresh_menus(Engine* engine, PagesControl* menu) {

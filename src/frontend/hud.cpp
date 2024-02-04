@@ -45,17 +45,26 @@
 #include "../core_defs.h"
 #include "../items/ItemDef.h"
 #include "../items/Inventory.h"
+#include "../net/NetSession.h"
 
 using glm::vec2;
 using glm::vec3;
 using glm::vec4;
 using namespace gui;
 
+bool isInOnline = 0;
+
 inline std::shared_ptr<Label> create_label(gui::wstringsupplier supplier) {
     auto label = std::make_shared<Label>(L"-");
     label->textSupplier(supplier);
     return label;
 }
+
+void inOnline() {
+
+    bool isInOnline = 1;
+}
+
 
 void HudRenderer::createDebugPanel(Engine* engine) {
     auto level = frontend->getLevel();
@@ -364,7 +373,15 @@ void HudRenderer::update(bool visible) {
 
         } else {
             pause = true;
-            menu->set("pause");
+            if(isInOnline == 0) {
+                menu->set("pause");
+                std::cout << "Basic Pause Created!" << std::endl;
+                std::cout << isInOnline << std::endl;
+            } else {
+                menu->set("serpause");
+                std::cout << "Server Pause Created!" << std::endl;
+                std::cout << isInOnline << std::endl;
+            }
         }
     }
     if (visible && Events::jactive(BIND_HUD_INVENTORY)) {
