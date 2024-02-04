@@ -57,6 +57,7 @@ NetSession::~NetSession()
 
 bool NetSession::StartSession(Engine *eng, const int port)
 {
+    std::cout << "[INFO]: Server started on port:" << port << std::endl;
     if(sessionInstance)
     {
         return false;
@@ -77,7 +78,7 @@ bool NetSession::StartSession(Engine *eng, const int port)
 
 bool NetSession::ConnectToSession(const char *ip, const int port, Engine *eng, bool versionChecking, bool contentChecking)
 {
-    if(sessionInstance) 
+    if(sessionInstance)
     {
         return false;
     }

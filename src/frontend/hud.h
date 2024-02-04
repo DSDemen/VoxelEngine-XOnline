@@ -7,7 +7,8 @@
 #include <glm/glm.hpp>
 
 #include "../graphics/GfxContext.h"
-
+extern bool isInOnline;
+void inOnline();
 class Camera;
 class Level;
 class Block;
