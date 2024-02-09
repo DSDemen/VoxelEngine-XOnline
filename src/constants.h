@@ -21,7 +21,8 @@ const int ITEM_ICON_SIZE = 48;
 
 /* Chunk volume (count of voxels per Chunk) */
 constexpr int CHUNK_VOL = (CHUNK_W * CHUNK_H * CHUNK_D);
-
+#undef min(a,b)
+#undef max(a,b)
 /* BLOCK_VOID is block id used to mark non-existing voxel (voxel of missing chunk) */
 const blockid_t BLOCK_VOID = std::numeric_limits<blockid_t>::max();
 const itemid_t ITEM_VOID = std::numeric_limits<itemid_t>::max();
